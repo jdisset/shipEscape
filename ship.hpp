@@ -4,6 +4,16 @@
 #include <iostream>
 #include <random>
 #include <unordered_map>
+
+#ifdef DISPLAY
+#include <QtCore/qmath.h>
+#include <QtGui/QGuiApplication>
+#include <QtGui/QMatrix4x4>
+#include <QtGui/QOpenGLShaderProgram>
+#include <QtGui/QScreen>
+#include "viewer/shipwindow.hpp"
+#endif
+
 using namespace std;
 
 #define CONTROLE 0.1
@@ -264,11 +274,20 @@ struct shipXP {
 		auto &g = ind.dna;
 		double d = 0;
 		for (int r = 0; r < NRUN; ++r) {
+#ifdef DISPLAY
+			QSurfaceFormat f;
+			f.setProfile(QSurfaceFormat::CoreProfile);
+			f.setVersion(3, 3);
+			f.setSamples(8);
+			QGuiApplication app(argc, argv);
+			ShipWindow<World> window(world, stepFunc);
+#endif
 			World world;
 			world.seedOffset = r * 1000;
 			const double maxDist = world.MAXH;
 			auto &s = world.ships.at(0);
-			while (!world.collided && world.countdown > 0) {
+			bool finished = false;
+			auto stepFunc = [&]() {
 				auto dir = s.orientation;
 				g.setInputConcentration("c", dir.x * 0.5 + 0.5);
 				g.setInputConcentration("s", dir.y * 0.5 + 0.5);
@@ -289,10 +308,26 @@ struct shipXP {
 					s.rotate(-1.0, world.dt * TURNSPEED);
 				if (thrust) s.thrust(world.dt);
 				world.update();
-			}
+				finished = world.collided || world.countdown <= 0;
+#ifdef DISPLAY
+				if (finished) window.close();
+#endif
+			};
+#ifdef DISPLAY
+			window.setFormat(f);
+			window.resize(800, 800);
+			window.show();
+			window.setAnimating(true);
+			app.exec();
+#endif
+			while (!finished) stepFunc();
 			d += s.position.y;
 		}
 		ind.fitnesses["distance"] = d / static_cast<double>(NRUN);
+
+#ifdef DISPLAY
+		std::cerr << "Fitness = " << ind.fitnesses["distance"] << std::endl;
+#endif
 	}
 };
 }

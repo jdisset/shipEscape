@@ -12,7 +12,6 @@ int main(int argc, char **argv) {
 	f.setProfile(QSurfaceFormat::CoreProfile);
 	f.setVersion(3, 3);
 	f.setSamples(8);
-
 	ShipEscape::World w;
 	QGuiApplication app(argc, argv);
 	ShipWindow<decltype(w)> window(w, [&]() {
