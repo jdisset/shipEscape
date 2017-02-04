@@ -2,13 +2,16 @@
 #define SHIPWINDOW_HPP
 #include <QKeyEvent>
 #include <QOpenGLFunctions>
+#include <QOpenGLPaintDevice>
 #include <QOpenGLTexture>
+#include <QPainter>
 #include <QVector2D>
 #include <chrono>
 #include <deque>
 #include <functional>
 #include <memory>
 #include <random>
+#include <sstream>
 #include <unordered_set>
 #include "extern.h"
 #include "openglwindow.h"
@@ -40,6 +43,8 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 	std::function<void()> updateLambda;
 	std::unordered_set<int> keyMap;
 
+	QVector2D anchor, prevAnchor;
+
  public:
 	bool keyboardEnabled = true;
 	ShipWindow(World &w, std::function<void()> upl) : world(w), updateLambda(upl) {}
@@ -51,12 +56,14 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 		spriteRenderer.load(":/shaders/sprite.vert", ":/shaders/sprite.frag");
 		circleRenderer.load(":/shaders/sprite.vert", ":/shaders/circle.frag");
 		plainRenderer.load(":/shaders/sprite.vert", ":/shaders/plain.frag");
-		particleRenderer.load(":/shaders/sprite.vert", ":/shaders/blurredcircle.frag");
+		particleRenderer.load(":/shaders/sprite.vert", ":/shaders/circle.frag");
 		shipTex = std::unique_ptr<QOpenGLTexture>(
 		    new QOpenGLTexture(QImage(":/images/ship.png").mirrored()));
 		shipTex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
 		shipTex->setMagnificationFilter(QOpenGLTexture::Linear);
 		t0 = std::chrono::high_resolution_clock::now();
+		anchor = QVector2D(world.ships[0].position.x, world.ships[0].position.y);
+		prevAnchor = anchor;
 	}
 
 	void processEvents() {
@@ -95,7 +102,9 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 			keyMap.erase(event->key());
 	}
 
-	void render() {
+	double prevL = 0;
+
+	void render(QPainter *painter) {
 		const qreal retinaScale = devicePixelRatio();
 		GL->glViewport(0, 0, width() * retinaScale, height() * retinaScale);
 		auto t1 = std::chrono::high_resolution_clock::now();
@@ -105,6 +114,7 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 		updateParticles(dur.count());
 		processEvents();
 		clear();
+		// painter->begin();
 		QMatrix4x4 model;
 		QMatrix4x4 view;
 
@@ -112,10 +122,22 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 		QVector2D shipPosition(world.ships.at(0).position.x, world.ships.at(0).position.y);
 		double pixelRatio = world.MAXH / (double)height();
 		double scale = 1.0;
-		view.ortho((shipPosition.x() - (width() * scale * 0.5 * pixelRatio)),
-		           (shipPosition.x() + (width() * scale * 0.5 * pixelRatio)),
-		           (shipPosition.y() - (world.MAXH * 0.5 * scale)),
-		           (shipPosition.y() + (world.MAXH * 0.5 * scale)), 1, -1);
+
+		// smooth camera
+		const double K = 200;
+		const double C = 0.01;
+		auto anchorDir = shipPosition - anchor;
+		auto v = (anchor - prevAnchor) / world.dt;
+		auto L = anchorDir.length();
+		auto speed = (L - prevL) / world.dt;
+		prevL = L;
+		anchor += (v + (anchorDir * K - (speed * C) * anchorDir) * world.dt) * world.dt;
+		prevAnchor = anchor;
+
+		view.ortho((anchor.x() - (width() * scale * 0.5 * pixelRatio)),
+		           (anchor.x() + (width() * scale * 0.5 * pixelRatio)),
+		           (anchor.y() - (world.MAXH * 0.5 * scale)),
+		           (anchor.y() + (world.MAXH * 0.5 * scale)), 1, -1);
 		int currentGridCell = world.getGridPosition(shipPosition.y());
 
 		// particles
@@ -124,12 +146,14 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 			QMatrix4x4 pModel;
 			pModel.translate(p.position);
 			pModel.translate(0, 0, -pIndex++ / (double)particles.size());
-			pModel.scale(1.8, 1.8);
+			pModel.scale(0.4, 0.4);
 			auto v = chrono::duration_cast<chrono::milliseconds>(t0 - p.t);
 			QColor cm =
 			    QColor::fromHsvF(mix(0.55, 0.8, min((double)v.count() / 700.0, 1.0)), 1.0, 1);
-			QVector3D color(cm.redF(), cm.greenF(), cm.blueF());
-			particleRenderer.draw(pModel, view, color);
+			QVector4D color(cm.redF(), cm.greenF(), cm.blueF(), 1.0);
+			QVector4D color2 = color;
+			color2.setW(0.0);
+			particleRenderer.draw(pModel, view, color, color2);
 		}
 
 		// we draw all the ships
@@ -174,16 +198,16 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 					QMatrix4x4 cModel;
 					cModel.translate(o.center.x, o.center.y);
 					cModel.scale(o.radius, o.radius);
-					QVector3D color1(1, 0.7, 0.5);
-					QVector3D color2(1, 0.9, 0.6);
+					QVector4D color1(1, 0.7, 0.5, 1.0);
+					QVector4D color2(1, 0.9, 0.6, 1.0);
 					circleRenderer.draw(cModel, view, color1, color2);
 				}
 			}
 		}
 		// walls
 		const double wallWidth = 50;
-		const QVector3D wColor1(.07, .3, .48);
-		const QVector3D wColor2(.12, .5, .34);
+		const QVector4D wColor1(.07, .3, .48, 1.0);
+		const QVector4D wColor2(.12, .5, .34, 1.0);
 		{
 			QMatrix4x4 wModel;
 			wModel.translate(-wallWidth, shipPosition.y());
@@ -199,8 +223,8 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 
 		// doors
 		const double doorThickness = 0.3;
-		const QVector3D dColor1(.97, .0, .32);
-		const QVector3D dColor2(.98, .8, .3);
+		const QVector4D dColor1(.97, .0, .32, 1.0);
+		const QVector4D dColor2(.98, .8, .3, 1.0);
 		{
 			// closed one
 			QMatrix4x4 wModel;
@@ -229,6 +253,15 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 			}
 		}
 
+		QFont font;
+		font.setPixelSize(30);
+		painter->setFont(font);
+		painter->setPen(Qt::white);
+		QString score("Distance : ");
+		score += QString::number(shipPosition.y());
+		GL->glViewport(0, 0, width() * retinaScale, height() * retinaScale);
+		painter->drawText(50, 600, score);
+		painter->end();
 		++frame;
 	}
 

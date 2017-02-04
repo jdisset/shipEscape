@@ -1,7 +1,7 @@
 #ifndef RENDERQUAD_HPP
 #define RENDERQUAD_HPP
-#include "primitives/quad.hpp"
 #include "extern.h"
+#include "primitives/quad.hpp"
 
 class RenderQuad {
 	QOpenGLShaderProgram shader;
@@ -16,7 +16,8 @@ class RenderQuad {
 		quad.load(shader);
 	}
 
-	void draw(const QMatrix4x4 &model, const QMatrix4x4 &view, const QVector3D &color1, const QVector3D &color2) {
+	void draw(const QMatrix4x4 &model, const QMatrix4x4 &view, const QVector4D &color1,
+	          const QVector4D &color2) {
 		shader.bind();
 		quad.vao.bind();
 		shader.setUniformValue(shader.uniformLocation("model"), model);

@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
 		}
 		w.update();
 	});
-	window.setFormat(f);
+	//window.setFormat(f);
 	window.resize(800, 800);
 	window.show();
 
