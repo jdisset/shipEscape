@@ -1,14 +1,16 @@
 #version 330 core
 in vec2 UV;
 out vec4 fragColor;
-uniform vec3 color;
+uniform vec3 color1;
+uniform vec3 color2;
 
+float sql(vec2 v){
+	return dot(v,v);
+}
 const float factor = 1.17;
 void main() {
-	float nL = length(UV - vec2(0.5f,0.5)) *2.0 ;
-	nL += factor;
-	nL *= nL;
-	nL = min(nL - factor, 1.0);
-	fragColor =  nL < 1.0 ? vec4(color,1.0-nL) : vec4(0);
-} 
+	float l = sql(UV - vec2(0.5));
+
+	fragColor =  l <=0.25 ? mix(vec4(color1,1.0), vec4(color2,1.0),l/0.25) : vec4(0);
+}
 

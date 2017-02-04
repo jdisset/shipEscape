@@ -6,6 +6,7 @@
     <file>shaders/sprite.vert</file>
     <file>shaders/sprite.frag</file>
     <file>shaders/circle.frag</file>
+    <file>shaders/blurredcircle.frag</file>
     <file>shaders/plain.frag</file>
     <file>shaders/thrust.frag</file>
   </qresource>

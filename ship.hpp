@@ -50,7 +50,7 @@ struct Ship {
 	V velocity;
 	V forces;
 	V orientation = V(0, 1);
-	double thrustPower = 1000.0;
+	double thrustPower = 2500.0;
 	bool thrusting = false;  // only useful for viewer
 	Ship(){};
 	void rotate(double dir, double dt) {
@@ -100,7 +100,7 @@ struct World {
 	double prevReset = -1000;
 	double step = 20;
 	double coef = 1.0;
-	double coefIncrement = 0.1;
+	double coefIncrement = 0.3;
 	bool collided = false;
 	const size_t NBSHIPS = 1;
 	int seedOffset = 0;
@@ -204,7 +204,7 @@ struct World {
 		for (auto &s : ships) {
 			s.updatePosition(dt);
 		}
-		if (ships.at(0).position.y >= nextReset) {
+		if (ships.at(0).position.y >= nextReset + ships.at(0).dimensions.y * 0.5) {
 			prevReset = nextReset;
 			nextReset += step * coef;
 			coef += coefIncrement;
@@ -235,7 +235,7 @@ struct World {
 };
 
 struct shipXP {
-	static const constexpr int NBLASERS = 7;
+	static const constexpr int NBLASERS = 11;
 	template <typename G> static G randomInit(size_t nbReguls = 1) {
 		G g;
 		g.randomParams();
@@ -259,8 +259,8 @@ struct shipXP {
 
 	template <typename I> static void evaluate(I &ind, bool dbg = false) {
 		const int NRUN = 2;
-		const int NBLASERS = 7;
 		const double TURNSPEED = 8.0;
+		const double TETA = M_PI * 1.2;
 		auto &g = ind.dna;
 		double d = 0;
 		for (int r = 0; r < NRUN; ++r) {
@@ -268,14 +268,13 @@ struct shipXP {
 			world.seedOffset = r * 1000;
 			const double maxDist = world.MAXH;
 			auto &s = world.ships.at(0);
-			const double teta = M_PI;
 			while (!world.collided && world.countdown > 0) {
 				auto dir = s.orientation;
 				g.setInputConcentration("c", dir.x * 0.5 + 0.5);
 				g.setInputConcentration("s", dir.y * 0.5 + 0.5);
-				dir.rotate(-teta / 2.0);
+				dir.rotate(-TETA / 2.0);
 				for (int i = 0; i < NBLASERS; ++i) {
-					dir.rotate(teta / NBLASERS);
+					dir.rotate(TETA / NBLASERS);
 					dir.normalize();
 					double dist = world.normalizedDistRay(dir, maxDist, s);
 					g.setInputConcentration(std::to_string(i), dist);
