@@ -276,8 +276,6 @@ struct shipXP {
 		for (int r = 0; r < NRUN; ++r) {
 #ifdef DISPLAY
 			QSurfaceFormat f;
-			f.setProfile(QSurfaceFormat::CoreProfile);
-			f.setVersion(3, 3);
 			f.setSamples(8);
 			QGuiApplication app(argc, argv);
 			ShipWindow<World> window(world, stepFunc);

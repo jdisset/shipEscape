@@ -8,11 +8,9 @@
 #include "shipwindow.hpp"
 
 int main(int argc, char **argv) {
-	QSurfaceFormat f;
-	f.setProfile(QSurfaceFormat::CoreProfile);
-	f.setVersion(3, 3);
-	f.setSamples(8);
 	ShipEscape::World w;
+	QSurfaceFormat f;
+	f.setSamples(8);
 	QGuiApplication app(argc, argv);
 	ShipWindow<decltype(w)> window(w, [&]() {
 		if (w.collided || w.countdown <= 0) {
@@ -21,7 +19,7 @@ int main(int argc, char **argv) {
 		}
 		w.update();
 	});
-	//window.setFormat(f);
+	window.setFormat(f);
 	window.resize(800, 800);
 	window.show();
 
