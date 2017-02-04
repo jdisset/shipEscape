@@ -1,0 +1,12 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/">
+    <file>images/ship.png</file>
+    <file>images/bord.jpg</file>
+    <file>shaders/sprite.vert</file>
+    <file>shaders/sprite.frag</file>
+    <file>shaders/circle.frag</file>
+    <file>shaders/plain.frag</file>
+    <file>shaders/thrust.frag</file>
+  </qresource>
+</RCC>
