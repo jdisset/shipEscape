@@ -140,6 +140,31 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 		           (anchor.y() + (world.MAXH * 0.5 * scale)), 1, -1);
 		int currentGridCell = world.getGridPosition(shipPosition.y());
 
+		// ship lights
+		QVector4D color1(0.1, 0.24, 0.48, 0.2);
+		QVector4D color2(0.05, 0.12, 0.24, 0.0);
+		for (auto &s : world.ships) {
+			QVector2D sPosition(s.position.x, s.position.y);
+			double teta = M_PI * 2.0;
+			double maxDist = world.MAXH;
+			auto dir = s.orientation;
+			dir.rotate(-teta / 2.0);
+			double N = 1500;
+			for (int i = 0; i < N; ++i) {
+				QMatrix4x4 targetModel;
+				dir.rotate(teta / N);
+				dir.normalize();
+				QVector2D ori(dir.x, dir.y);
+				double angle = atan2(-dir.y, dir.x);
+				double dist = world.normalizedDistRay(dir, maxDist, s);
+				targetModel.translate(sPosition + ori * dist * 0.5);
+				targetModel.rotate((angle + M_PI * 0.5) * (180.0 / M_PI), QVector3D(0, 0, -1));
+				targetModel.scale(0.25, 0.5 * dist);
+				double v = 1.0 - dist / maxDist;
+				plainRenderer.draw(targetModel, view, color1, color2);
+			}
+		}
+
 		// particles
 		double pIndex = 0.0;
 		for (auto &p : particles) {
@@ -155,7 +180,6 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 			color2.setW(0.0);
 			particleRenderer.draw(pModel, view, color, color2);
 		}
-
 		// we draw all the ships
 		for (auto &s : world.ships) {
 			model = QMatrix4x4();
@@ -163,30 +187,6 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 			model.rotate(s.getAngle() * (180.0 / M_PI), 0, 0, 1);
 			model.scale(s.dimensions.x, s.dimensions.y);
 			spriteRenderer.draw(shipTex->textureId(), model, view, QVector3D(0.0, 0.0, 0));
-		}
-
-		// laser dots
-		for (auto &s : world.ships) {
-			QVector2D sPosition(s.position.x, s.position.y);
-			double teta = M_PI * 1.2;
-			double maxDist = world.MAXH;
-			auto dir = s.orientation;
-			dir.rotate(-teta / 2.0);
-			double N = 0;
-			for (int i = 0; i < N; ++i) {
-				QMatrix4x4 targetModel;
-				dir.rotate(teta / N);
-				dir.normalize();
-				QVector2D ori(dir.x, dir.y);
-				double dist = world.normalizedDistRay(dir, maxDist, s);
-				targetModel.translate(sPosition + ori * dist);
-				targetModel.translate(0, 0, -(float)i / (N + 1.0));
-				targetModel.scale(1.8, 1.8);
-				double v = 1.0 - dist / maxDist;
-				QColor cm = QColor::fromHsvF(mix(0.05, 0.32, v), 0.85, 0.9);
-				QVector3D color(cm.redF(), cm.greenF(), cm.blueF());
-				particleRenderer.draw(targetModel, view, color);
-			}
 		}
 
 		// obstacles
@@ -253,14 +253,13 @@ template <typename World> class ShipWindow : public OpenGLWindow {
 			}
 		}
 
-		QFont font;
-		font.setPixelSize(30);
+		QFont font("arial", 40);
 		painter->setFont(font);
-		painter->setPen(Qt::white);
-		QString score("Distance : ");
-		score += QString::number(shipPosition.y());
-		GL->glViewport(0, 0, width() * retinaScale, height() * retinaScale);
-		painter->drawText(50, 600, score);
+		painter->setPen(QColor::fromHsvF(0, 0, 1));
+		QString score = QString::number((int)shipPosition.y());
+		painter->drawText(QRect((width() * retinaScale * 0.5 - 80) - anchor.x() * retinaScale,
+		                        height() * retinaScale * 0.9 - 80, 160, 160),
+		                  Qt::AlignCenter, score);
 		painter->end();
 		++frame;
 	}

@@ -15,11 +15,12 @@ OpenGLWindow::~OpenGLWindow() { delete m_device; }
 void OpenGLWindow::render(QPainter *painter) { Q_UNUSED(painter); }
 void OpenGLWindow::initialize() {}
 void OpenGLWindow::render() {
+	const qreal retinaScale = devicePixelRatio();
 	if (!m_device) m_device = new QOpenGLPaintDevice;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	m_device->setSize(size());
+	m_device->setSize(size() * retinaScale);
 
 	QPainter painter(m_device);
 	render(&painter);
